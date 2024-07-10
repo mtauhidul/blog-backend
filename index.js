@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const logger = require("./utils/logger");
+const config = require("./utils/config");
 
 const blogSchema = new mongoose.Schema({
   title: String,
@@ -16,8 +17,7 @@ const blogSchema = new mongoose.Schema({
 const Blog = mongoose.model("Blog", blogSchema);
 
 logger.info("connecting to MongoDB...");
-const mongoUrl = process.env.MONGODB_URI;
-mongoose.connect(mongoUrl);
+mongoose.connect(config.MONGODB_URI);
 logger.info("connected to MongoDB.");
 
 app.use(cors());
@@ -99,7 +99,6 @@ const errorHandler = (error, request, response, next) => {
 };
 app.use(errorHandler);
 
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  logger.info(`blog backend server running on port ${PORT}`);
+app.listen(config.PORT, () => {
+  logger.info(`blog backend server running on port ${config.PORT}`);
 });
