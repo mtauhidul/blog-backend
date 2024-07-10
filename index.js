@@ -4,6 +4,7 @@ const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const logger = require("./utils/logger");
 
 const blogSchema = new mongoose.Schema({
   title: String,
@@ -14,8 +15,10 @@ const blogSchema = new mongoose.Schema({
 
 const Blog = mongoose.model("Blog", blogSchema);
 
+logger.info("connecting to MongoDB...");
 const mongoUrl = process.env.MONGODB_URI;
 mongoose.connect(mongoUrl);
+logger.info("connected to MongoDB.");
 
 app.use(cors());
 app.use(express.json());
@@ -84,7 +87,7 @@ const unknownEndpoint = (req, res) => {
 app.use(unknownEndpoint);
 
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message);
+  logger.error(error.message);
 
   if (error.name === "CastError") {
     return res.status(400).send({ error: "malformed id!" });
@@ -98,5 +101,5 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`blog backend server running on port ${PORT}`);
 });
