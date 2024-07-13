@@ -1,113 +1,136 @@
-const { test, beforeEach, after } = require("node:test");
+const { test, after, beforeEach, describe } = require("node:test");
 const assert = require("node:assert");
-const Blog = require("../models/blog");
-const supertest = require("supertest");
 const mongoose = require("mongoose");
+const supertest = require("supertest");
 const app = require("../app");
-
 const api = supertest(app);
 
-const initialBlogs = [
-  {
-    title: "Understanding JavaScript Closures",
-    author: "John Doe",
-    url: "https://example.com/js-closures",
-    likes: 150,
-  },
-  {
-    title: "A Guide to Node.js Performance Optimization",
-    author: "Jane Smith",
-    url: "https://example.com/nodejs-optimization",
-    likes: 230,
-  },
-  {
-    title: "Mastering React Hooks",
-    author: "Alice Johnson",
-    url: "https://example.com/react-hooks",
-    likes: 300,
-  },
-  {
-    title: "Building RESTful APIs with Express",
-    author: "Bob Brown",
-    url: "https://example.com/express-apis",
-    likes: 175,
-  },
-  {
-    title: "Learning GraphQL",
-    author: "Eve White",
-    url: "https://example.com/learning-graphql",
-    likes: 180,
-  },
-];
+const helper = require("../utils/list_helper");
+const Blog = require("../models/blog");
 
-beforeEach(async () => {
-  await Blog.deleteMany({});
-  const blogPromises = initialBlogs.map((blog) => {
-    const blogObject = new Blog(blog);
-    return blogObject.save();
+describe("when there are initially some blogs saved", () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({});
+    await Blog.insertMany(helper.initialBlogs);
   });
-  await Promise.all(blogPromises);
-});
 
-test("blogs are returned as json", async () => {
-  await api
-    .get("/api/blogs")
-    .expect(200)
-    .expect("Content-Type", /application\/json/);
-});
+  test("blogs are returned as json", async () => {
+    await api
+      .get("/api/blogs")
+      .expect(200)
+      .expect("Content-Type", /application\/json/);
+  });
 
-test("there are five blogs", async () => {
-  const response = await api.get("/api/blogs");
-  assert.strictEqual(response.body.length, 5);
-});
+  test("there are five blogs", async () => {
+    const response = await api.get("/api/blogs");
+    assert.strictEqual(response.body.length, helper.initialBlogs.length);
+  });
 
-test("blogs unique identifier is id", async () => {
-  const response = await api.get("/api/blogs");
-  const blog = response.body[0];
-  assert.ok(blog.hasOwnProperty("id"));
-});
+  test("blogs unique identifier is id", async () => {
+    const response = await api.get("/api/blogs");
+    const blog = response.body[0];
+    assert.ok(blog.hasOwnProperty("id"));
+  });
 
-test("test blog post method", async () => {
-  const newBlog = {
-    title: "Introduction to TypeScript",
-    author: "Carol White",
-    url: "https://example.com/typescript-intro",
-    likes: 210,
-  };
+  test("test blog post method", async () => {
+    const newBlog = {
+      title: "Introduction to TypeScript",
+      author: "Carol White",
+      url: "https://example.com/typescript-intro",
+      likes: 210,
+    };
 
-  await api
-    .post("/api/blogs")
-    .send(newBlog)
-    .expect(201)
-    .expect("Content-Type", /application\/json/);
+    await api
+      .post("/api/blogs")
+      .send(newBlog)
+      .expect(201)
+      .expect("Content-Type", /application\/json/);
 
-  const response = await api.get("/api/blogs");
+    const response = await api.get("/api/blogs");
 
-  const newlyAddedBlog = response.body.find(
-    (blog) => blog.title === "Introduction to TypeScript"
-  );
+    const newlyAddedBlog = response.body.find(
+      (blog) => blog.title === "Introduction to TypeScript"
+    );
 
-  assert.strictEqual(response.body.length, initialBlogs.length + 1);
-  assert.ok(newlyAddedBlog);
-  assert.deepEqual(newlyAddedBlog, { ...newBlog, id: newlyAddedBlog.id });
-});
+    assert.strictEqual(response.body.length, helper.initialBlogs.length + 1);
+    assert.ok(newlyAddedBlog);
+    assert.deepEqual(newlyAddedBlog, { ...newBlog, id: newlyAddedBlog.id });
+  });
 
-test.only("missing likes property set to zero", async () => {
-  const newBlog = {
-    title: "Introduction to TypeScript",
-    author: "Carol White",
-    url: "https://example.com/typescript-intro",
-  };
+  test("missing likes property set to zero", async () => {
+    const newBlog = {
+      title: "Introduction to TypeScript",
+      author: "Carol White",
+      url: "https://example.com/typescript-intro",
+    };
 
-  const response = await api
-    .post("/api/blogs")
-    .send(newBlog)
-    .expect(201)
-    .expect("Content-Type", /application\/json/);
+    const response = await api
+      .post("/api/blogs")
+      .send(newBlog)
+      .expect(201)
+      .expect("Content-Type", /application\/json/);
 
-  const newlyAddedBlog = response.body;
+    const newlyAddedBlog = response.body;
 
-  assert.strictEqual(newlyAddedBlog.likes, 0);
+    assert.strictEqual(newlyAddedBlog.likes, 0);
+  });
+
+  describe("deletion of a blog post", () => {
+    test("succeeds with status code 204 if id is valid", async () => {
+      const blogsAtStart = await helper.blogsInDb();
+      const blogToDelete = blogsAtStart[0];
+
+      await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204);
+
+      const blogsAtEnd = await helper.blogsInDb();
+
+      assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length - 1);
+
+      const titles = blogsAtEnd.map((r) => r.title);
+      assert(!titles.includes(blogToDelete.title));
+    });
+  });
+
+  describe("updating the number of likes for a blog post", () => {
+    test("succeeds with valid data", async () => {
+      const blogsAtStart = await helper.blogsInDb();
+      const blogToUpdate = blogsAtStart[0];
+
+      const updatedBlog = {
+        ...blogToUpdate,
+        likes: blogToUpdate.likes + 1,
+      };
+
+      await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .send(updatedBlog)
+        .expect(200)
+        .expect("Content-Type", /application\/json/);
+
+      const blogsAtEnd = await helper.blogsInDb();
+      const updatedBlogInDb = blogsAtEnd.find(
+        (blog) => blog.id === blogToUpdate.id
+      );
+
+      assert.ok(updatedBlogInDb);
+      assert.strictEqual(updatedBlogInDb.likes, updatedBlog.likes);
+    });
+
+    test("fails with status code 400 if data is invalid", async () => {
+      const blogsAtStart = await helper.blogsInDb();
+      const blogToUpdate = blogsAtStart[0];
+
+      const invalidUpdate = {
+        ...blogToUpdate,
+        likes: "invalid",
+      };
+
+      await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .send(invalidUpdate)
+        .expect(400);
+    });
+  });
 });
 
 after(async () => {

@@ -19,17 +19,29 @@ blogsRouter.get("/:id", (req, res, next) => {
     .catch((error) => next(error));
 });
 
-blogsRouter.put("/:id", (req, res, next) => {
+blogsRouter.put("/:id", async (req, res, next) => {
   const { title, author, url, likes } = req.body;
   const blog = { title, author, url, likes };
 
-  Blog.findByIdAndUpdate(req.params.id, blog, {
-    new: true,
-    runValidators: true,
-    context: "query",
-  })
-    .then((updatedBlog) => res.json(updatedBlog))
-    .catch(next);
+  if (likes !== undefined && typeof likes !== "number") {
+    return res.status(400).json({ error: "Likes must be a number" });
+  }
+
+  try {
+    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, blog, {
+      new: true,
+      runValidators: true,
+      context: "query",
+    });
+
+    if (updatedBlog) {
+      res.json(updatedBlog);
+    } else {
+      res.status(404).end();
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 blogsRouter.delete("/:id", (req, res, next) => {
