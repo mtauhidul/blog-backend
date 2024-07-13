@@ -51,16 +51,22 @@ beforeEach(async () => {
   await Promise.all(blogPromises);
 });
 
-test.only("blogs are returned as json", async () => {
+test("blogs are returned as json", async () => {
   await api
     .get("/api/blogs")
     .expect(200)
     .expect("Content-Type", /application\/json/);
 });
 
-test.only("there are five notes", async () => {
+test("there are five notes", async () => {
   const response = await api.get("/api/blogs");
   assert.strictEqual(response.body.length, 5);
+});
+
+test.only("blogs unique identifier is id", async () => {
+  const response = await api.get("/api/blogs");
+  const blog = response.body[0];
+  assert(blog.hasOwnProperty("id"));
 });
 
 after(async () => {
