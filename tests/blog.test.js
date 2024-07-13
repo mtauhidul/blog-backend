@@ -7,6 +7,7 @@ const api = supertest(app);
 
 const helper = require("../utils/list_helper");
 const Blog = require("../models/blog");
+const User = require("../models/user");
 
 describe("when there are initially some blogs saved", () => {
   beforeEach(async () => {
