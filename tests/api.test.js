@@ -92,6 +92,24 @@ test("test blog post method", async () => {
   assert.deepEqual(newlyAddedBlog, { ...newBlog, id: newlyAddedBlog.id });
 });
 
+test.only("missing likes property set to zero", async () => {
+  const newBlog = {
+    title: "Introduction to TypeScript",
+    author: "Carol White",
+    url: "https://example.com/typescript-intro",
+  };
+
+  const response = await api
+    .post("/api/blogs")
+    .send(newBlog)
+    .expect(201)
+    .expect("Content-Type", /application\/json/);
+
+  const newlyAddedBlog = response.body;
+
+  assert.strictEqual(newlyAddedBlog.likes, 0);
+});
+
 after(async () => {
   await mongoose.connection.close();
 });
