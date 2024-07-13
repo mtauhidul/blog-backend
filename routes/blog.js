@@ -41,11 +41,19 @@ blogsRouter.delete("/:id", (req, res, next) => {
 blogsRouter.post("/", (req, res, next) => {
   const { title, author, url, likes } = req.body;
 
-  if (!title || !author || !url || likes === undefined) {
-    return res.status(400).json({ error: "Anything missing!" });
+  if (!title || !author || !url) {
+    return res
+      .status(400)
+      .json({ error: "Title, author, and url are required!" });
   }
 
-  const blog = new Blog({ title, author, url, likes });
+  const blog = new Blog({
+    title,
+    author,
+    url,
+    likes: likes !== undefined ? likes : 0,
+  });
+
   blog
     .save()
     .then((returnedBlog) => {
