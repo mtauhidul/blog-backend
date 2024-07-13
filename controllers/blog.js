@@ -4,6 +4,10 @@ const User = require("../models/user");
 
 blogsRouter.get("/", (req, res, next) => {
   Blog.find({})
+    .populate("user", {
+      username: 1,
+      name: 1,
+    })
     .then((blogs) => res.json(blogs))
     .catch(next);
 });
